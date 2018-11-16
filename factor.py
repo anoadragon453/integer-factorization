@@ -20,27 +20,34 @@ PRIME_AMT = 1000
 # We store as a dictionary to allow for fast lookups. Key: prime, value: index
 with open('1000_primes.txt') as primes:
     factorbase = {int(line.rstrip('\n')):index for (index, line) in enumerate(primes)}
+factorbaseL = list(factorbase)
+factorbaseL.sort()
 
-def calcR(j, k, number):
-    r = int((k*number)^0.5) + j
+def calcR(j, k):
+    r = int((k*PRIME_AMT)**0.5) + j
     return r
 
 number = 16637
 def isSmooth(r):
-    r2 = r*r % number
+    #initialize values
+    r2 = (r*r) % number
     factors = []
-    index = len(factorbase) - 1
-    for prime in list(factorbase)[::-1]:
+    index = len(factorbaseL) - 1
+
+    #iterate over factor base and create list of factors
+    while index != -1:
+        prime = factorbaseL[index]
         if r2 % prime == 0:
             if (not(factors == [])) and prime == factors[0]:
-                factors.remove(prime)
+                factors.remove(prime) #remove x^2 elements
             else:
                 factors.insert(0, prime)
-            r2 = r2 / prime
+            r2 = r2 // prime
         else:
             index -= 1
-    if r2 in factorbase:
-        factors.insert(0, int(r2))
+
+    #r2 will be one if r is B-smooth
+    if r2 == 1:
         return factors
     else:
         return None
@@ -52,21 +59,23 @@ m = np.zeros([PRIME_AMT + 2, PRIME_AMT])
 # Keep track of how many rows we've filled and stop when we've filled them all
 r_count = 0
 
-for j, k in product(range(PRIME_AMT), range(PRIME_AMT)):
-    # Calculate r value and whether r^2 is smooth
-    r = calcR(j, k)
-    factors = isSmooth(r)
+def function():
+    for j, k in product(range(PRIME_AMT), range(PRIME_AMT)):
+        # Calculate r value and whether r^2 is smooth
+        r = calcR(j, k)
+        factors = isSmooth(r)
 
-    # If we got back the factors, then r^2 is B-smooth
-    if factors is not None:
-        # Change matrix row column to 1 if factor is present
-        for f in factors:
-            m[r_count, factorbase[f]] = 1
-        r_count += 1
-    else:
-        # This r^2 value is not B-smooth
-        continue
+        # If we got back the factors, then r^2 is B-smooth
+        if factors is not None:
+            # Change matrix row column to 1 if factor is present
+            for f in factors:
+                m[r_count, factorbase[f]] = 1
+            r_count += 1
+        else:
+            # This r^2 value is not B-smooth
+            continue
 
-    # Stop when we've populated all rows
-    if r_count >= m.shape[0]:
-        break
+        # Stop when we've populated all rows
+        if r_count >= m.shape[0]:
+            break
+
