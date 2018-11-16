@@ -15,5 +15,6 @@ number = sys.argv[1]
 
 # Store first 1000 primes
 with open('1000_primes.txt') as primes:
-    lines = [int(line.rstrip('\n')) for line in primes]
+    factorbase = [int(line.rstrip('\n')) for line in primes]
+
 
