@@ -4,6 +4,7 @@ import math
 import numpy as np
 import sys
 import os
+import subprocess
 from itertools import product
 
 PRIME_AMT = 10
@@ -90,6 +91,39 @@ def create_matrix():
 
     return m
 
-np.linalg.tensorsolve(create_matrix(),0)
+# Doesn't work
+#np.linalg.tensorsolve(create_matrix(),0)
 
+matrix = create_matrix()
 
+# Export matrix to text file format
+with open('matrix.txt', 'w') as f:
+    f.write('%d %d' % matrix.shape)
+    f.write('\n')
+    for row in matrix:
+        for item in row:
+            f.write('%d ' % int(item))
+        f.write('\n')
+
+# Perform Gaussian elimination on matrix
+subprocess.run(["./GaussBin.exe", "matrix.txt", "matrix-out.txt"])
+
+# Read in modified matrix
+lines = [line.rstrip() for line in open('matrix-out.txt')]
+
+# Get number of rows
+row_count = int(lines[0])
+col_count = 12
+
+# Skip row count when looping through matrix contents
+lines = lines[1:]
+
+# Feed items into numpy matrix
+new_matrix = np.zeros([row_count, col_count], dtype=int)
+for index, line in enumerate(lines):
+    items = line.split(' ')
+
+    # Insert list of items into numpy matrix
+    new_matrix[index,] = np.array(items)
+
+print(new_matrix)
