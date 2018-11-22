@@ -6,8 +6,9 @@ import sys
 import os
 import subprocess
 from itertools import product
+import decimal
 
-PRIME_AMT = 10
+PRIME_AMT = 999
 
 # Make sure the user provided a number to factor
 #if len(sys.argv) is not 2:
@@ -21,11 +22,13 @@ PRIME_AMT = 10
 # We store as a dictionary to allow for fast lookups. Key: prime, value: index
 with open('1000_primes.txt') as primes:
     factorbase = {int(line.rstrip('\n')):index for (index, line) in enumerate(primes)}
-factorbase = {2:0, 3:1, 5:2, 7:3, 11:4, 13:5, 17:6, 19:7, 23:8, 29:9}
+#factorbase = {2:0, 3:1, 5:2, 7:3, 11:4, 13:5, 17:6, 19:7, 23:8, 29:9}
 factorbaseL = list(factorbase)
-factorbaseL.sort()
 
-number = 16637
+factorbaseL.sort()
+print (factorbaseL)
+print (len(factorbaseL))
+number = 307561
 def calcR(k, j):
     r = int((k*number)**0.5) + j
     return r
@@ -46,8 +49,10 @@ def isSmooth(r):
             else:
                 factors.insert(0, prime)
             r2 = r2 // prime
+            #print (index)
         else:
             index -= 1
+           
 
     #r2 will be one if r is B-smooth
     if r2 == 1:
@@ -61,7 +66,9 @@ def isSmooth(r):
 
 # Keep track of how many rows we've filled and stop when we've filled them all
 #r_count = 0
-        
+
+rowIndex_to_rValue = dict()
+
 def create_matrix():
     m = np.zeros([PRIME_AMT + 2, PRIME_AMT], dtype=int)
     r_count = 0
@@ -80,19 +87,18 @@ def create_matrix():
                         m[r_count][factorbase[f]] = 1
                     r_count += 1
                     m_rows.add(tuple(factors))
+                    rowIndex_to_rValue[r_count - 1] = r
             else:
                 # This r^2 value is not B-smooth
                 continue
             # Stop when we've populated all rows
+            #print(r_count)
             if r_count >= PRIME_AMT + 2:
                 break
         if r_count >= PRIME_AMT + 2:
             break
 
     return m
-
-# Doesn't work
-#np.linalg.tensorsolve(create_matrix(),0)
 
 matrix = create_matrix()
 
@@ -106,14 +112,19 @@ with open('matrix.txt', 'w') as f:
         f.write('\n')
 
 # Perform Gaussian elimination on matrix
+print("BEFORE")
+print("BEFORE")
+print("BEFORE")
+print("BEFORE")
+print("BEFORE")
 subprocess.run(["./GaussBin.exe", "matrix.txt", "matrix-out.txt"])
-
+print("AFTER")
 # Read in modified matrix
 lines = [line.rstrip() for line in open('matrix-out.txt')]
 
 # Get number of rows
 row_count = int(lines[0])
-col_count = 12
+col_count = PRIME_AMT + 2
 
 # Skip row count when looping through matrix contents
 lines = lines[1:]
@@ -126,4 +137,32 @@ for index, line in enumerate(lines):
     # Insert list of items into numpy matrix
     new_matrix[index,] = np.array(items)
 
-print(new_matrix)
+#print(new_matrix)
+
+
+def calcPrimes():
+    for j in range(PRIME_AMT**2): # may iterate out of bounds if no value found
+        rowL = []
+        for i in range(col_count):
+            if new_matrix[j][i] == 1:
+                rowL.append(i)
+        left = 1
+        right = 1
+        #print(rowL)
+        for num in rowL:
+            left = left * rowIndex_to_rValue[num]
+            right = right * (((rowIndex_to_rValue[num])**2) % number)
+        left = decimal.Decimal(left % number)
+        right = decimal.Decimal((int(math.sqrt(right)) % number))
+        #print(left)
+        #print(right)
+        factor1 = math.gcd(right - left, number)
+        #print(factor1)
+        if factor1 != 1:
+            factor2 = number//factor1
+            #print (factor1)
+            return (factor1, factor2)
+
+
+
+
