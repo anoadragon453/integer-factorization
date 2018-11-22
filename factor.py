@@ -6,7 +6,6 @@ import sys
 import os
 import subprocess
 from itertools import product
-import decimal
 
 PRIME_AMT = 999
 
@@ -23,12 +22,14 @@ PRIME_AMT = 999
 with open('1000_primes.txt') as primes:
     factorbase = {int(line.rstrip('\n')):index for (index, line) in enumerate(primes)}
 #factorbase = {2:0, 3:1, 5:2, 7:3, 11:4, 13:5, 17:6, 19:7, 23:8, 29:9}
+factorbase.pop(7907)
 factorbaseL = list(factorbase)
 
+
 factorbaseL.sort()
-print (factorbaseL)
+#print (factorbaseL)
 print (len(factorbaseL))
-number = 307561
+number = 195535307440099922611741
 def calcR(k, j):
     r = int((k*number)**0.5) + j
     return r
@@ -49,9 +50,9 @@ def isSmooth(r):
             else:
                 factors.insert(0, prime)
             r2 = r2 // prime
-            #print (index)
         else:
             index -= 1
+            #print (index)
            
 
     #r2 will be one if r is B-smooth
@@ -86,6 +87,7 @@ def create_matrix():
                     for f in factors: # Change matrix row column to 1 if factor is present
                         m[r_count][factorbase[f]] = 1
                     r_count += 1
+                    print(r_count)
                     m_rows.add(tuple(factors))
                     rowIndex_to_rValue[r_count - 1] = r
             else:
@@ -112,13 +114,8 @@ with open('matrix.txt', 'w') as f:
         f.write('\n')
 
 # Perform Gaussian elimination on matrix
-print("BEFORE")
-print("BEFORE")
-print("BEFORE")
-print("BEFORE")
-print("BEFORE")
 subprocess.run(["./GaussBin.exe", "matrix.txt", "matrix-out.txt"])
-print("AFTER")
+
 # Read in modified matrix
 lines = [line.rstrip() for line in open('matrix-out.txt')]
 
@@ -141,7 +138,7 @@ for index, line in enumerate(lines):
 
 
 def calcPrimes():
-    for j in range(PRIME_AMT**2): # may iterate out of bounds if no value found
+    for j in range((new_matrix.shape)[0]): # may iterate out of bounds if no value found
         rowL = []
         for i in range(col_count):
             if new_matrix[j][i] == 1:
@@ -152,8 +149,11 @@ def calcPrimes():
         for num in rowL:
             left = left * rowIndex_to_rValue[num]
             right = right * (((rowIndex_to_rValue[num])**2) % number)
-        left = decimal.Decimal(left % number)
-        right = decimal.Decimal((int(math.sqrt(right)) % number))
+        right = math.log(right)
+        right = math.sqrt(right)
+        right = math.exp(right)
+        left = left % number
+        right = int(right) % number
         #print(left)
         #print(right)
         factor1 = math.gcd(right - left, number)
