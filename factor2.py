@@ -29,7 +29,7 @@ factorbaseL = list(factorbase)
 factorbaseL.sort()
 #print (factorbaseL)
 print (len(factorbaseL))
-number = 392742364277
+number = 3205837387
 def calcR(k, j):
     r = int(round((k*number)**0.5)) + j
     return r
