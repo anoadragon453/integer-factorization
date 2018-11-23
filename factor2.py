@@ -6,8 +6,10 @@ import sys
 import os
 import subprocess
 from itertools import product
+from decimal import Decimal
 
 PRIME_AMT = 1024
+OFFSET = 10
 
 # Make sure the user provided a number to factor
 #if len(sys.argv) is not 2:
@@ -29,7 +31,7 @@ factorbaseL = list(factorbase)
 factorbaseL.sort()
 #print (factorbaseL)
 print (len(factorbaseL))
-number = 3205837387
+number = 392742364277
 def calcR(k, j):
     r = int(round((k*number)**0.5)) + j
     return r
@@ -44,7 +46,7 @@ def isSmooth(r):
     #iterate over factor base and create list of factors
     while index != -1:
         prime = factorbaseL[index]
-        if r2 % prime == 0:
+        if r2 % prime == 0 and r != 289 and r != 466:
             if (not(factors == [])) and prime == factors[0]:
                 factors.remove(prime) #remove x^2 elements
             else:
@@ -71,7 +73,7 @@ def isSmooth(r):
 rowIndex_to_rValue = dict()
 
 def create_matrix():
-    m = np.zeros([PRIME_AMT + 10, PRIME_AMT], dtype=int)
+    m = np.zeros([PRIME_AMT + OFFSET, PRIME_AMT], dtype=int)
     r_count = 0
     m_rows = set()
 
@@ -89,9 +91,10 @@ def create_matrix():
                     for f in factors: # Change matrix row column to 1 if factor is present
                         m[r_count][factorbase[f]] = 1
                     r_count += 1
-                    print(r_count)
+                    #print(r)
                     m_rows.add(tuple(factors))
                     rowIndex_to_rValue[r_count - 1] = r
+                    #print(r**2 % number)
                 else:
                     continue
             else:
@@ -99,14 +102,16 @@ def create_matrix():
                 continue
             # Stop when we've populated all rows
             #print(r_count)
-            if r_count >= PRIME_AMT + 10:
+            if r_count >= PRIME_AMT + OFFSET:
                 break
-        if r_count >= PRIME_AMT + 10:
+        if r_count >= PRIME_AMT + OFFSET:
             break
 
     return m
 
 matrix = create_matrix()
+#print(matrix)
+#for l in range(matrix.shape[0])
 
 # Export matrix to text file format
 with open('matrix.txt', 'w') as f:
@@ -125,7 +130,7 @@ lines = [line.rstrip() for line in open('matrix-out.txt')]
 
 # Get number of rows
 row_count = int(lines[0])
-col_count = PRIME_AMT + 10
+col_count = PRIME_AMT + OFFSET
 
 # Skip row count when looping through matrix contents
 lines = lines[1:]
@@ -140,7 +145,7 @@ for index, line in enumerate(lines):
 
 #print(new_matrix)
 
-
+#print(new_matrix)
 def calcPrimes():
     temp = 1
     for j in range((new_matrix.shape)[0]): # may iterate out of bounds if no value found
@@ -153,12 +158,14 @@ def calcPrimes():
         #print(rowL)
         for num in rowL:
             left = left * rowIndex_to_rValue[num]
-            right = right * (((rowIndex_to_rValue[num])**2) % number)
-        right = math.log(right)
-        right = math.sqrt(right)
-        right = math.exp(right)
-        left = left % number
+            right = right * ((rowIndex_to_rValue[num]**2) % number)
+        right = int(Decimal(right).sqrt()) % number
+        #right = math.log(right)
+        #right = math.sqrt(right)
+        #right = math.exp(right)
         right = int(round(right)) % number
+        left = left % number
+        #right = int(round(right)) % number
         #print(left)
         #print(right)
         factor1 = math.gcd(abs(right - left), number)
