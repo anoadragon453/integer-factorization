@@ -173,3 +173,5 @@ def calcPrimes():
             factor2 = number//factor1
             #print (factor1)
             return (factor1, factor2)
+
+print(calcPrimes())
