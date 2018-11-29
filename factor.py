@@ -1,111 +1,191 @@
-#!/usr/bin/env python3
-
-import math
 import numpy as np
 import sys
 import os
 import subprocess
-from itertools import product
+import math
+from decimal import Decimal
 
-PRIME_AMT = 999
+def log(*args):
+    if debug:
+        print(*args)
 
-# Make sure the user provided a number to factor
-#if len(sys.argv) is not 2:
-#    print('Please input a single number to factor')
-#    sys.exit(1)
-#
-## Save number
-#number = sys.argv[1]
+# createFactorbase returns a dict of prime numbers with a
+# given length L
+# We store our factorbase as a dictionary as we need to find
+# out the index of a factor later with only the factor itself
+# Storing as a list, we'd need to iterate over the list many
+# times to find that factors index, but with a dict this can
+# be a constant time lookup
+def createFactorbase(L):
+    factorbase = {}
+    count = 0
 
-# Store first 1000 primes
-# We store as a dictionary to allow for fast lookups. Key: prime, value: index
-with open('1000_primes.txt') as primes:
-    factorbase = {int(line.rstrip('\n')):index for (index, line) in enumerate(primes)}
-#factorbase = {2:0, 3:1, 5:2, 7:3, 11:4, 13:5, 17:6, 19:7, 23:8, 29:9}
-factorbase.pop(7907)
-factorbaseL = list(factorbase)
+    # Open primes.txt, load in primes line by line
+    with open('primes.txt') as primes:
+        for prime in primes:
+            if count >= L:
+                return factorbase
 
+            # Additionally include an incrementing index for
+            # later quick reference
+            factorbase[int(prime.strip())] = count
+            count += 1
 
-factorbaseL.sort()
-#print (factorbaseL)
-print (len(factorbaseL))
-number = 195535307440099922611741
-def calcR(k, j):
+# calcR generates an r value according to equation 1,
+# given input values j and k
+def calcR(j, k):
     r = int((k*number)**0.5) + j
     return r
 
+# generateSmoothFactors creates a dictionary of factors and
+# their exponents from a number r. It derives factors
+# from a given factorbase, f.
+# If the number is not B-Smooth, it returns None
+def generateSmoothFactors(r, f, N):
+    # Calculate r^2 within our modulo
+    r2 = (r*r) % N
 
-def isSmooth(r):
-    #initialize values
-    r2 = (r*r) % number
-    factors = []
-    index = len(factorbaseL) - 1
+    # Dictionary of factors we will return
+    factors = {}
 
-    #iterate over factor base and create list of factors
-    while index != -1:
-        prime = factorbaseL[index]
-        if r2 % prime == 0:
-            if (not(factors == [])) and prime == factors[0]:
-                factors.remove(prime) #remove x^2 elements
+    # Iterate over our factorbase and create a list of
+    # factors.
+    for prime in f.keys():
+        # Check if this prime factors into r^2
+        # Keep doing so and reducing r^2 by that factor until
+        # We can no longer do so with this prime
+        while r2 > 1 and r2 % prime is 0:
+            # Add prime to the dict of factors, or increment
+            # its exponent if it's already present
+            if prime in factors:
+                factors[prime] += 1
             else:
-                factors.insert(0, prime)
-            r2 = r2 // prime
-        else:
-            index -= 1
-            #print (index)
-           
+                factors[prime] = 1
 
-    #r2 will be one if r is B-smooth
-    if r2 == 1:
+            # Reduce r2 by this prime
+            r2 = r2 // prime
+            log("Reduced r2 to:", r2)
+
+    log("Retrieved factors for %d:" % ((r*r) % N))
+    log(factors)
+           
+    # If r2 is 1, then r is B-smooth
+    if r2 is 1:
+        factors_list = []
+
+        # Return only the factors with odd exponents
+        for factor, exponent in factors.items():
+            # Check and add only if exponent is odd
+            if exponent % 2 is 1:
+                factors_list.append(factor)
+
         return factors
     else:
-        return []
-    
-# Calculate a binary matrix with rows being (r?) and columns being indexes in
-# our factorbase. Initialize filled with zeros
-#m = np.zeros([PRIME_AMT + 2, PRIME_AMT], dtype=int)
+        # Return None if not B-smooth.
+        # We will be discarding this prime
+        return None
 
-# Keep track of how many rows we've filled and stop when we've filled them all
-#r_count = 0
+#####################################
+##          Program Start          ##
+#####################################
 
-rowIndex_to_rValue = dict()
+# Whether to enable or disable debug printing
+# No printing means a faster runtime
+debug = False
 
-def create_matrix():
-    m = np.zeros([PRIME_AMT + 2, PRIME_AMT], dtype=int)
-    r_count = 0
-    m_rows = set()
+# The amount of primes in our factorbase
+prime_amount = 1000
 
-    # Calculate r value and whether r^2 is smooth
-    for k in range(1, PRIME_AMT**2):
-        for j in range(1, k + 1):
-            r = calcR(k, j)
-            factors = isSmooth(r)
-            
-            # If we got back the factors, then r^2 is B-smooth
-            if factors != []:
-                if tuple(factors) not in m_rows: # Check if row is already in matrix
-                    for f in factors: # Change matrix row column to 1 if factor is present
-                        m[r_count][factorbase[f]] = 1
-                    r_count += 1
-                    print(r_count)
-                    m_rows.add(tuple(factors))
-                    rowIndex_to_rValue[r_count - 1] = r
-            else:
-                # This r^2 value is not B-smooth
-                continue
-            # Stop when we've populated all rows
-            #print(r_count)
-            if r_count >= PRIME_AMT + 2:
-                break
-        if r_count >= PRIME_AMT + 2:
-            break
+# The amount of r values, directly proportionate to our
+# factorbase length
+r_amount = prime_amount + 10
 
-    return m
+# The number to factor
+number = 3205837387
 
-matrix = create_matrix()
+# Our factorbase, which holds the first prime_amount primes
+log('Creating factorbase...')
+factorbase = createFactorbase(prime_amount)
+log("Factorbase:", factorbase)
+
+# Create rows to fill our binary matrix with.
+# Once the list is filled, insert those rows which are unique
+# into our binary matrix
+rows = []
+
+# We also create a list to store the corresponding factors
+# so that we can later multiply these factors together
+factors_record = []
+
+# And finally, we keep a record of all of our chosen r values.
+# We'll also need to multiply these together towards the end
+r_values = []
+
+# Iterate over values generated by calcR, checking whether
+# each one is B-smooth according to our factorbase.
+# If so, add its factors as a row to rows, and thus our
+# binary matrix
+(j, k) = (2, 3)
+log("Generating rows...")
+while len(rows) < r_amount:
+    r = calcR(j, k)
+    log("Got r value:", r)
+    log("Generating factors...")
+
+    # Check if this number is B-smooth
+    factors = generateSmoothFactors(r, factorbase, number)
+    if factors:
+        # The number is smooth, include the factors in our
+        # binary matrix
+
+        # Retrieve the indexes of these factors in our
+        # factorbase
+        indexes = list(map(lambda factor: factorbase[factor], factors))
+
+        # Create a list of zeros to store binary encoded indexes
+        row = [False] * prime_amount
+
+        # Set each value in our row to True (binary 1) that
+        # corresponds to an odd factor
+        for index in indexes:
+            row[index] = True
+
+        # Add the row to our matrix, but only if it is unique
+        if row not in rows:
+            rows.append(row)
+            log('Added row:', row)
+
+            # Also save these factors to a list for later
+            factors_record.append(factors)
+
+            # And the r value
+            r_values.append(r)
+
+    k += 1
+    if k > 30:
+        j += 1
+        k = 2
+
+# Create a binary matrix of size r_amount x prime_amount
+# dtype is boolean to represent a binary value
+matrix = np.zeros([r_amount, prime_amount], dtype=bool)
+
+# We will now fill our matrix with our binary rows of factors.
+rows = rows
+for i in range(r_amount):
+    matrix[i] = rows[i]
+
+log('Our binary matrix:')
+log(matrix)
+
+# Use an external program to solve the system of equations our
+# binary matrix represents for x and y
+in_file = 'matrix.txt'
+out_file = 'matrix-out.txt'
+executable = './GaussBin.exe'
 
 # Export matrix to text file format
-with open('matrix.txt', 'w') as f:
+with open(in_file, 'w') as f:
     f.write('%d %d' % matrix.shape)
     f.write('\n')
     for row in matrix:
@@ -114,19 +194,19 @@ with open('matrix.txt', 'w') as f:
         f.write('\n')
 
 # Perform Gaussian elimination on matrix
-subprocess.run(["./GaussBin.exe", "matrix.txt", "matrix-out.txt"])
+subprocess.run([executable, in_file, out_file])
 
 # Read in modified matrix
-lines = [line.rstrip() for line in open('matrix-out.txt')]
+lines = [line.rstrip() for line in open(out_file)]
 
-# Get number of rows
+# Get shape of this new matrix
 row_count = int(lines[0])
-col_count = PRIME_AMT + 2
+col_count = r_amount
 
-# Skip row count when looping through matrix contents
+# Reduce lines to just the matrix's contents
 lines = lines[1:]
 
-# Feed items into numpy matrix
+# Feed items into a new numpy matrix
 new_matrix = np.zeros([row_count, col_count], dtype=int)
 for index, line in enumerate(lines):
     items = line.split(' ')
@@ -134,35 +214,67 @@ for index, line in enumerate(lines):
     # Insert list of items into numpy matrix
     new_matrix[index,] = np.array(items)
 
-#print(new_matrix)
+# Remove temporary files
+os.remove(in_file)
+os.remove(out_file)
 
+log("Our new matrix is:")
+log(new_matrix)
 
-def calcPrimes():
-    for j in range((new_matrix.shape)[0]): # may iterate out of bounds if no value found
-        rowL = []
-        for i in range(col_count):
-            if new_matrix[j][i] == 1:
-                rowL.append(i)
-        left = 1
-        right = 1
-        #print(rowL)
-        for num in rowL:
-            left = left * rowIndex_to_rValue[num]
-            right = right * (((rowIndex_to_rValue[num])**2) % number)
-        right = math.log(right)
-        right = math.sqrt(right)
-        right = math.exp(right)
-        left = left % number
-        right = int(right) % number
-        #print(left)
-        #print(right)
-        factor1 = math.gcd(right - left, number)
-        #print(factor1)
-        if factor1 != 1:
-            factor2 = number//factor1
-            #print (factor1)
-            return (factor1, factor2)
+# Each row of this new matrix is a clue to solving this
+# system of equations. In each row, the value of every column
+# specifies which of our list of factors in our original
+# system of equations we need to multiply together to find
+# a factor
+for row in new_matrix:
+    # This will be our resulting right side of the
+    # row multiplication equation.
+    # This is created by multiplying all the factors
+    # from all the specified rows together
+    right_product = 1
 
+    # And this will be our left, made up from all the
+    # r values multiplied together
+    left_product = 1
 
+    # Go through each value in this row of the matrix
+    for index, item in enumerate(row):
+        # If the value is 1, that means we will use the
+        # list of factors that corresponds to the index
+        # of this value in the row
+        if item == 1:
+            # Get the r value this corresponds to and add it
+            # to the left product
+            left_product *= r_values[index]**2
+            
+            # Then get the dict of factors for this r value.
+            # This contains the factors and their exponents
+            # as keys and values of a dictionary
+            factors = factors_record[index]
 
+            # Iterate through the dict, pulling out each
+            # number and multiplying them together with the
+            # value of the right product
+            for factor, exponent in factors.items():
+                right_product *= factor**exponent
 
+    # Now we sqrt the products, and keep them in the modulo
+    left_product = int(Decimal(left_product).sqrt()) % number
+    right_product = int(Decimal(right_product).sqrt()) % number
+
+    log('Left: %d, right: %d' % (left_product, right_product))
+
+    # Now we calculate gcd(right - left, number)
+    # If the gcd is 1 or number, then we didn't find a factor.
+    # Otherwise, we did, and we're done!
+    factor = math.gcd(right_product - left_product, number)
+    if factor != 1 and factor != number:
+        # We found a factor, yay! Return it and the number
+        # divided by the factor to find the other one
+        other_factor = number / factor
+
+        # Print out our factors
+        print('(%d, %d)' % (factor, other_factor))
+
+        # Exit the program
+        sys.exit(0)
