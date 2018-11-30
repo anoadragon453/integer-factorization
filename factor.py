@@ -33,9 +33,11 @@ def createFactorbase(L):
 
 # calcR generates an r value according to equation 1,
 # given input values j and k
-def calcR(j, k):
-    r = int((k*number)**0.5) + j
-    return r
+def calcR(j, k, n):
+    return int((k*n)**0.5) + j
+
+def calcRWiki(x, n):
+    return (math.ceil(math.sqrt(n)) + x)**2 - n
 
 # generateSmoothFactors creates a dictionary of factors and
 # their exponents from a number r. It derives factors
@@ -66,12 +68,11 @@ def generateSmoothFactors(r, f, N):
             r2 = r2 // prime
             log("Reduced r2 to:", r2)
 
-    log("Retrieved factors for %d:" % ((r*r) % N))
-    log(factors)
-           
     # If r2 is 1, then r is B-smooth
     if r2 is 1:
         factors_list = []
+
+        log("Retrieved factors for %d:" % r, factors)
 
         # Return only the factors with odd exponents
         for factor, exponent in factors.items():
@@ -83,6 +84,7 @@ def generateSmoothFactors(r, f, N):
     else:
         # Return None if not B-smooth.
         # We will be discarding this prime
+        log('Not smooth. Discarding prime.')
         return None
 
 #####################################
@@ -94,19 +96,19 @@ def generateSmoothFactors(r, f, N):
 debug = False
 
 # The amount of primes in our factorbase
-prime_amount = 1000
+prime_amount = 500
 
 # The amount of r values, directly proportionate to our
 # factorbase length
 r_amount = prime_amount + 10
 
 # The number to factor
-number = 3205837387
+number = 392742364277
 
 # Our factorbase, which holds the first prime_amount primes
 log('Creating factorbase...')
 factorbase = createFactorbase(prime_amount)
-log("Factorbase:", factorbase)
+log('Factorbase:', factorbase)
 
 # Create rows to fill our binary matrix with.
 # Once the list is filled, insert those rows which are unique
@@ -125,12 +127,14 @@ r_values = []
 # each one is B-smooth according to our factorbase.
 # If so, add its factors as a row to rows, and thus our
 # binary matrix
-(j, k) = (2, 3)
-log("Generating rows...")
+(j, k) = (1, 1)
+log('Generating rows...')
 while len(rows) < r_amount:
-    r = calcR(j, k)
-    log("Got r value:", r)
-    log("Generating factors...")
+    print('trying j: %d, k: %d' % (j, k))
+    r = calcR(j, k, number)
+
+    log('Got r value:', r)
+    log('Generating factors...')
 
     # Check if this number is B-smooth
     factors = generateSmoothFactors(r, factorbase, number)
@@ -161,10 +165,17 @@ while len(rows) < r_amount:
             # And the r value
             r_values.append(r)
 
+    ''' The n method
+    if k % 75:
+        j += 1
+
+    k += 1
+    '''
+
     k += 1
     if k > 30:
+        k = 1
         j += 1
-        k = 2
 
 # Create a binary matrix of size r_amount x prime_amount
 # dtype is boolean to represent a binary value
@@ -218,7 +229,7 @@ for index, line in enumerate(lines):
 os.remove(in_file)
 os.remove(out_file)
 
-log("Our new matrix is:")
+log('Our new matrix is:')
 log(new_matrix)
 
 # Each row of this new matrix is a clue to solving this
